@@ -11,7 +11,7 @@ python -u run.py \
   --root_path ./dataset/EPF/ \
   --data_path NP.csv \
   --model_id NP_168_24 \
-  --model $model_name \
+  --model TimeXer \
   --data custom \
   --features MS \
   --seq_len 168 \
@@ -21,7 +21,7 @@ python -u run.py \
   --dec_in 3 \
   --c_out 1 \
   --des $des \
-  --patch_len $patch_len \
+  --patch_len 24 \
   --d_model 512 \
   --d_ff 512 \
   --batch_size 4 \

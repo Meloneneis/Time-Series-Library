@@ -80,16 +80,34 @@ class StandardScaler():
         return (data * self.std) + self.mean
 
 
-def visual(true, preds=None, name='./pic/test.pdf'):
+import matplotlib.pyplot as plt
+
+
+def visual(true, preds=None, name='./pic/test.pdf', seq_len=None):
     """
-    Results visualization
+    Results visualization with three lines.
     """
-    plt.figure()
-    if preds is not None:
-        plt.plot(preds, label='Prediction', linewidth=2)
-    plt.plot(true, label='GroundTruth', linewidth=2)
+    plt.figure(figsize=(10, 6))
+
+    if seq_len is not None:
+        # Historical part (gray, x=0 to seq_len-1)
+        plt.plot(range(seq_len), true[:seq_len], label='History', color='gray', linewidth=2, zorder=1)
+        # Ground truth future (blue, x=seq_len to seq_len+pred_len-1)
+        plt.plot(range(seq_len, len(true)), true[seq_len:], label='Ground Truth', color='blue', linewidth=2, zorder=2)
+        if preds is not None:
+            # Predicted future (orange, x=seq_len to seq_len+pred_len-1, foreground)
+            plt.plot(range(seq_len, len(preds)), preds[seq_len:], label='Prediction', color='orange',
+                     linewidth=2, zorder=3)
+        # Vertical line at prediction start
+        plt.axvline(x=seq_len, color='red', linestyle='--', linewidth=1, label='Prediction Start', zorder=30)
+
+    plt.xlabel('Time Steps')
+    plt.ylabel('Value')
+    plt.title('Time Series Forecast')
     plt.legend()
-    plt.savefig(name, bbox_inches='tight')
+    plt.grid(True)
+    plt.savefig(name, format='pdf', bbox_inches='tight')
+    plt.close()
 
 
 def adjustment(gt, pred):

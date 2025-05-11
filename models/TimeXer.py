@@ -122,7 +122,7 @@ class Model(nn.Module):
         self.use_norm = configs.use_norm
         self.patch_len = configs.patch_len
         self.patch_num = int(configs.seq_len // configs.patch_len)
-        self.n_vars = 1 if configs.features == 'MS' else configs.enc_in
+        self.n_vars = 1 if configs.features == 'MS' else len(configs.target)
         # Embedding
         self.en_embedding = EnEmbedding(self.n_vars, configs.d_model, self.patch_len, configs.dropout)
 
@@ -194,13 +194,12 @@ class Model(nn.Module):
 
         _, _, N = x_enc.shape
 
-        en_embed, n_vars = self.en_embedding(x_enc.permute(0, 2, 1))
-        ex_embed = self.ex_embedding(x_enc, x_mark_enc)
+        en_embed, n_vars = self.en_embedding(x_enc[:, :, -self.n_vars:].permute(0, 2, 1))
+        ex_embed = self.ex_embedding(x_enc[:, :, :-self.n_vars], x_mark_enc)
 
         enc_out = self.encoder(en_embed, ex_embed)
         enc_out = torch.reshape(
             enc_out, (-1, n_vars, enc_out.shape[-2], enc_out.shape[-1]))
-        # z: [bs x nvars x d_model x patch_num]
         enc_out = enc_out.permute(0, 1, 3, 2)
 
         dec_out = self.head(enc_out)  # z: [bs x nvars x target_window]
@@ -208,14 +207,14 @@ class Model(nn.Module):
 
         if self.use_norm:
             # De-Normalization from Non-stationary Transformer
-            dec_out = dec_out * (stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
-            dec_out = dec_out + (means[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
+            dec_out = dec_out * (stdev[:, 0, -self.n_vars:].unsqueeze(1).repeat(1, self.pred_len, 1))
+            dec_out = dec_out + (means[:, 0, -self.n_vars:].unsqueeze(1).repeat(1, self.pred_len, 1))
 
         return dec_out
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
         if self.task_name == 'long_term_forecast' or self.task_name == 'short_term_forecast':
-            if self.features == 'M':
+            if self.features == 'M' or self.features == "MX":
                 dec_out = self.forecast_multi(x_enc, x_mark_enc, x_dec, x_mark_dec)
                 return dec_out[:, -self.pred_len:, :]  # [B, L, D]
             else:

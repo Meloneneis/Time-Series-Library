@@ -8,7 +8,7 @@ python -u run.py \
   --root_path ./dataset/m4 \
   --seasonal_patterns 'Monthly' \
   --model_id m4_Monthly \
-  --model $model_name \
+  --model TimesNet \
   --data m4 \
   --features M \
   --e_layers 2 \
@@ -17,7 +17,7 @@ python -u run.py \
   --enc_in 1 \
   --dec_in 1 \
   --c_out 1 \
-  --batch_size 16 \
+  --batch_size 512 \
   --d_model 32 \
   --d_ff 32 \
   --top_k 5 \

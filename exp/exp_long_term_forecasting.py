@@ -59,7 +59,13 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
                     outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                f_dim = -1 if self.args.features == 'MS' else 0
+
+                if self.args.features == "MS":
+                    f_dim = -1
+                elif self.args.features == "MX":
+                    f_dim = -len(self.args.target)
+                else:
+                    f_dim = 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
 
@@ -116,7 +122,13 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                     with torch.cuda.amp.autocast():
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
-                        f_dim = -1 if self.args.features == 'MS' else 0
+                        if self.args.features == "MS":
+                            f_dim = -1
+                        elif self.args.features == "MX":
+                            f_dim = -len(self.args.target)
+                        else:
+                            f_dim = 0
+
                         outputs = outputs[:, -self.args.pred_len:, f_dim:]
                         batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
                         loss = criterion(outputs, batch_y)
@@ -124,7 +136,12 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                 else:
                     outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
-                    f_dim = -1 if self.args.features == 'MS' else 0
+                    if self.args.features == "MS":
+                        f_dim = -1
+                    elif self.args.features == "MX":
+                        f_dim = -len(self.args.target)
+                    else:
+                        f_dim = 0
                     outputs = outputs[:, -self.args.pred_len:, f_dim:]
                     batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
                     loss = criterion(outputs, batch_y)
@@ -196,7 +213,12 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                 else:
                     outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
-                f_dim = -1 if self.args.features == 'MS' else 0
+                if self.args.features == "MS":
+                    f_dim = -1
+                elif self.args.features == "MX":
+                    f_dim = -len(self.args.target)
+                else:
+                    f_dim = 0
                 outputs = outputs[:, -self.args.pred_len:, :]
                 batch_y = batch_y[:, -self.args.pred_len:, :].to(self.device)
                 outputs = outputs.detach().cpu().numpy()
@@ -221,9 +243,20 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                     if test_data.scale and self.args.inverse:
                         shape = input.shape
                         input = test_data.inverse_transform(input.reshape(shape[0] * shape[1], -1)).reshape(shape)
-                    gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
-                    pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
-                    visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
+                    if self.args.features == "MS":
+                        # Single variable for MS
+                        var_name = self.args.target[0] if self.args.target else "OT"
+                        gt = np.concatenate((input[0, :, -1], true[0, :, 0]), axis=0)
+                        pd = np.concatenate((input[0, :, -1], pred[0, :, 0]), axis=0)
+                        visual(gt, pd, os.path.join(folder_path, f'{i}_{var_name}.pdf'), self.args.seq_len)
+                    else:
+                        # Multiple variables for M or MX
+                        for var_idx in range(pred.shape[-1]):
+                            input_col_idx = var_idx + f_dim if f_dim != -1 else -1
+                            var_name = self.args.target[var_idx] if var_idx < len(self.args.target) else f"var{var_idx}"
+                            gt = np.concatenate((input[0, :, input_col_idx], true[0, :, var_idx]), axis=0)
+                            pd = np.concatenate((input[0, :, input_col_idx], pred[0, :, var_idx]), axis=0)
+                            visual(gt, pd, os.path.join(folder_path, f'{i}_{var_name}.pdf'), self.args.seq_len)
 
         preds = np.concatenate(preds, axis=0)
         trues = np.concatenate(trues, axis=0)
